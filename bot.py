@@ -270,8 +270,6 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
         }],
         'quiet': True,
         'no_warnings': True,
-        'age_limit': 99,
-        'ignoreerrors': False,
         'cookiefile': cookiefile,
     }
     try:
