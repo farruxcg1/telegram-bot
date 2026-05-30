@@ -6,15 +6,6 @@ import re
 # ffmpeg PATH
 if os.name == "nt":
     os.environ["PATH"] += r";C:\ffmpeg\bin"
-else:
-    try:
-        import imageio_ffmpeg
-        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
-        ffmpeg_dir = os.path.dirname(ffmpeg_exe)
-        os.environ["PATH"] = ffmpeg_dir + ":" + os.environ.get("PATH", "")
-        print(f"[ffmpeg] imageio_ffmpeg: {ffmpeg_exe}")
-    except Exception as e:
-        print(f"[ffmpeg] imageio_ffmpeg topilmadi: {e}")
 
 import telebot
 from telebot import types
@@ -264,7 +255,7 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
         'no_warnings': True,
         'age_limit': 99,
         'ignoreerrors': False,
-        'ffmpeg_location': os.path.dirname(os.environ.get('PATH', '/usr/bin').split(':')[0]) if os.name != 'nt' else None,
+
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -420,7 +411,7 @@ def download_all(message):
             }],
             'quiet': True,
             'no_warnings': True,
-            'ffmpeg_location': os.path.dirname(os.environ.get('PATH', '/usr/bin').split(':')[0]) if os.name != 'nt' else None,
+    
         }
         with yt_dlp.YoutubeDL(ydl_opts_audio) as ydl:
             ydl.extract_info(url, download=True)
