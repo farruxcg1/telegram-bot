@@ -12,7 +12,7 @@ from telebot import types
 import yt_dlp
 import requests
 
-BOT_TOKEN = "8856575714:AAFxJPf_eFVfO30Blq3K0T5_rGwaCZ5LDZI"
+BOT_TOKEN = "8856575714:AAEfcKrrG7Z99o8dyOV7PXrPKe4E8j3wS0U"
 RAPIDAPI_KEY = "6dc49d8cb3msh6f05457aa55d958p12a921jsnde8cd5768511"
 
 ADMIN_ID = 264008630
@@ -259,7 +259,10 @@ def show_search_results(chat_id, results, query):
 def download_and_send_song(chat_id, url, title, status_msg_id=None):
     success = False
     audio_base = get_unique_path("mp3").replace(".mp3", "")
-    cookiefile = 'cookies.txt' if os.path.exists('cookies.txt') else None
+    # cookies.txt ni topish
+    cookie_paths = ['cookies.txt', '/app/cookies.txt', os.path.join(os.path.dirname(__file__), 'cookies.txt')]
+    cookiefile = next((p for p in cookie_paths if os.path.exists(p)), None)
+    print(f"[Cookie] {'topildi: ' + cookiefile if cookiefile else 'topilmadi!'}")
     ydl_opts = {
         'outtmpl': audio_base + ".%(ext)s",
         'format': 'bestaudio/best',
