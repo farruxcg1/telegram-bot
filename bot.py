@@ -257,6 +257,7 @@ def show_search_results(chat_id, results, query):
 # 5. TANLANGAN QO'SHIQNI YUKLAB YUBORISH (TO'G'IRLANDI)
 # ──────────────────────────────────────────
 def download_and_send_song(chat_id, url, title, status_msg_id=None):
+    success = False
     audio_base = get_unique_path("mp3").replace(".mp3", "")
     ydl_opts = {
         'outtmpl': audio_base + ".%(ext)s",
@@ -270,6 +271,7 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
         'no_warnings': True,
         'age_limit': 99,
         'ignoreerrors': False,
+        'cookiefile': 'cookies.txt',
         'extractor_args': {'youtube': {'skip': ['dash', 'hls']}},
         'http_headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -296,27 +298,14 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
                     bot.delete_message(chat_id, status_msg_id)
                 except Exception:
                     pass
+            success = True
         else:
-            bot.send_message(chat_id, "❌ Fayl yuklanmadi. Boshqa variant tanlang.")
+            pass  # keyingi variant sinab ko'riladi
 
     except yt_dlp.utils.DownloadError as e:
-        err = str(e).lower()
-        if "age" in err or "sign in" in err:
-            bot.send_message(chat_id, "🔞 Bu video yoshga oid cheklov tufayli yuklanmadi. Boshqa variant tanlang.")
-        elif "unavailable" in err or "private" in err:
-            bot.send_message(chat_id, "🚫 Bu video mavjud emas yoki yopiq. Boshqa variant tanlang.")
-        elif "copyright" in err:
-            bot.send_message(chat_id, "©️ Bu video mualliflik huquqi tufayli bloklangan. Boshqa variant tanlang.")
-        else:
-            bot.send_message(
-                chat_id,
-                f"❌ Yuklab bo'lmadi. Boshqa variant tanlang.\n`{str(e)[:100]}`",
-                parse_mode="Markdown"
-            )
         print(f"[Download Error] {e}")
 
     except Exception as e:
-        bot.send_message(chat_id, "❌ Xatolik yuz berdi. Boshqa variant tanlang.")
         print(f"[Download Error] {e}")
 
     finally:
@@ -326,6 +315,8 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
                     os.remove(f"downloads/{f}")
                 except Exception:
                     pass
+
+    return success
 
 # ──────────────────────────────────────────
 # 6. CALLBACK: FOYDALANUVCHI RAQAM BOSDI (TO'G'IRLANDI)
@@ -343,14 +334,28 @@ def handle_pick(call):
 
     chosen = results[index]
 
-    # Faqat callback javobini yuborish — xabar va tugmalar O'ZGARTIRILMAYDI
     bot.answer_callback_query(call.id, f"⬇️ Yuklanmoqda: {chosen['title'][:30]}...")
-
-    # Yuklanmoqda xabari alohida yangi xabar sifatida yuboriladi
     status_msg = bot.send_message(chat_id, f"⬇️ Yuklanmoqda: *{chosen['title']}*", parse_mode="Markdown")
 
-    download_and_send_song(chat_id, chosen['url'], chosen['title'],
-                           status_msg_id=status_msg.message_id)
+    # Yuklab ko'ramiz, xato bo'lsa keyingi variantni avtomatik sinab ko'ramiz
+    success = download_and_send_song(chat_id, chosen['url'], chosen['title'],
+                                     status_msg_id=status_msg.message_id)
+
+    if not success:
+        # Keyingi variantlarni avtomatik sinab ko'rish
+        for next_index in range(index + 1, min(index + 4, len(results))):
+            next_chosen = results[next_index]
+            try:
+                bot.edit_message_text(
+                    f"⏭ Keyingi variant sinab ko'rilmoqda: *{next_chosen['title']}*",
+                    chat_id, status_msg.message_id, parse_mode="Markdown"
+                )
+            except Exception:
+                status_msg = bot.send_message(chat_id, f"⏭ Keyingi variant: *{next_chosen['title']}*", parse_mode="Markdown")
+            success = download_and_send_song(chat_id, next_chosen['url'], next_chosen['title'],
+                                             status_msg_id=status_msg.message_id)
+            if success:
+                break
 
     # search_results saqlanib qoladi — foydalanuvchi boshqa variant ham tanlay olsin
 
