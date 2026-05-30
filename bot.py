@@ -180,10 +180,10 @@ def recognize_with_shazam(audio_path):
     return found
 
 # ──────────────────────────────────────────
-# 3. YOUTUBE QIDIRUV → 10 TA NATIJA
+# 3. QIDIRUV → YouTube + SoundCloud
 # ──────────────────────────────────────────
-def search_youtube(query, max_results=10):
-    search_query = f"ytsearch{max_results}:{query}"
+def search_platform(query, prefix, max_results=8):
+    search_query = f"{prefix}{max_results}:{query}"
     ydl_opts = {
         'quiet': True,
         'no_warnings': True,
@@ -195,9 +195,13 @@ def search_youtube(query, max_results=10):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(search_query, download=False)
             entries = info.get('entries', [])
-            print(f"[Search] '{query}' → {len(entries)} ta natija topildi")
             for entry in entries:
                 if not entry:
+                    continue
+                # Yoshga oid cheklovli videolarni o'tkazib yuborish
+                age_limit = entry.get('age_limit') or 0
+                if age_limit >= 18:
+                    print(f"[Search] yoshga oid, o'tkazildi: {entry.get('title','')}")
                     continue
                 vid_id  = entry.get('id', '')
                 vid_url = entry.get('webpage_url') or (f"https://www.youtube.com/watch?v={vid_id}" if vid_id else None)
@@ -209,8 +213,19 @@ def search_youtube(query, max_results=10):
                     'duration': entry.get('duration') or 0,
                 })
     except Exception as e:
-        print(f"[Search Error] {e}")
+        print(f"[Search Error {prefix}] {e}")
     return results
+
+def search_youtube(query, max_results=10):
+    yt_results = search_platform(query, "ytsearch", max_results=10)[:7]
+    sc_results = search_platform(query, "scsearch", max_results=5)[:3]
+
+    for r in sc_results:
+        r['title'] = "🎵 " + r['title']
+
+    combined = yt_results + sc_results
+    print(f"[Search] '{query}' → YT:{len(yt_results)} + SC:{len(sc_results)} = {len(combined)} ta")
+    return combined[:10]
 
 # ──────────────────────────────────────────
 # 4. QIDIRUV NATIJALARINI INLINE TUGMALAR BILAN KO'RSATISH
@@ -255,6 +270,10 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
         'no_warnings': True,
         'age_limit': 99,
         'ignoreerrors': False,
+        'extractor_args': {'youtube': {'skip': ['dash', 'hls']}},
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
 
     }
     try:
