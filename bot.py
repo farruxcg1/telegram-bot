@@ -15,12 +15,29 @@ import requests
 BOT_TOKEN = "8856575714:AAEfcKrrG7Z99o8dyOV7PXrPKe4E8j3wS0U"
 RAPIDAPI_KEY = "6dc49d8cb3msh6f05457aa55d958p12a921jsnde8cd5768511"
 
+ADMIN_ID = 264008630
+
 bot = telebot.TeleBot(BOT_TOKEN)
 os.makedirs("downloads", exist_ok=True)
 
 # Holatlar
 pending_music = {}        # chat_id → True  (qo'lda nom yozish kutilmoqda)
 search_results = {}       # chat_id → [ {title, url, duration}, ... ]
+broadcast_mode = {}       # admin broadcast kutish holati
+
+USERS_FILE = "users.txt"
+
+def load_users():
+    if not os.path.exists(USERS_FILE):
+        return set()
+    with open(USERS_FILE, "r") as f:
+        return set(line.strip() for line in f if line.strip())
+
+def save_user(user_id):
+    users = load_users()
+    if str(user_id) not in users:
+        with open(USERS_FILE, "a") as f:
+            f.write(f"{user_id}\n")
 
 def get_unique_path(ext):
     return f"downloads/{uuid.uuid4().hex}.{ext}"
@@ -322,6 +339,7 @@ def handle_pick(call):
 # ──────────────────────────────────────────
 @bot.message_handler(commands=['start'])
 def start(message):
+    save_user(message.chat.id)
     bot.send_message(
         message.chat.id,
         "👋 Salom! Men video/audio yuklovchi botman.\n\n"
@@ -331,8 +349,23 @@ def start(message):
         parse_mode="Markdown"
     )
 
+@bot.message_handler(commands=['stats'])
+def stats(message):
+    if message.chat.id != ADMIN_ID:
+        return
+    users = load_users()
+    bot.send_message(message.chat.id, f"👥 Jami foydalanuvchilar: *{len(users)} ta*", parse_mode="Markdown")
+
+@bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+    if message.chat.id != ADMIN_ID:
+        return
+    broadcast_mode[ADMIN_ID] = True
+    bot.send_message(message.chat.id, "✍️ Hammaga yuboriladigan xabarni yozing:")
+
 @bot.message_handler(func=lambda m: m.text and m.text.startswith("http"))
 def download_all(message):
+    save_user(message.chat.id)
     url = message.text.strip()
     status_msg = bot.send_message(message.chat.id, "⏳ Video yuklanmoqda...")
     video_path = get_unique_path("mp4")
@@ -482,6 +515,30 @@ def text_search(message):
         show_search_results(message.chat.id, results, query)
     else:
         bot.edit_message_text("❌ Hech narsa topilmadi.", message.chat.id, status_msg.message_id)
+
+
+@bot.message_handler(func=lambda m: m.chat.id == ADMIN_ID and broadcast_mode.get(ADMIN_ID))
+def do_broadcast(message):
+    broadcast_mode.pop(ADMIN_ID, None)
+    users = load_users()
+    success, failed = 0, 0
+    status = bot.send_message(ADMIN_ID, f"📤 Yuborilmoqda... (0/{len(users)})")
+    for i, uid in enumerate(users):
+        try:
+            bot.copy_message(int(uid), ADMIN_ID, message.message_id)
+            success += 1
+        except Exception:
+            failed += 1
+        if (i + 1) % 10 == 0:
+            try:
+                bot.edit_message_text(f"📤 Yuborilmoqda... ({i+1}/{len(users)})", ADMIN_ID, status.message_id)
+            except Exception:
+                pass
+        time.sleep(0.05)
+    bot.edit_message_text(
+        f"✅ Yuborildi: *{success}* ta\n❌ Xato: *{failed}* ta",
+        ADMIN_ID, status.message_id, parse_mode="Markdown"
+    )
 
 print("Bot ishga tushdi...")
 bot.infinity_polling()
