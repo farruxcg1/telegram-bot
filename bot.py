@@ -3,9 +3,16 @@ import subprocess
 import uuid
 import time
 import re
-# ffmpeg PATH (Windows uchun)
+# ffmpeg PATH
 if os.name == "nt":
     os.environ["PATH"] += r";C:\ffmpeg\bin"
+else:
+    # Linux (Railway) uchun ffmpeg yo'lini qo'shamiz
+    for ffmpeg_path in ["/usr/bin", "/usr/local/bin", "/nix/var/nix/profiles/default/bin"]:
+        if os.path.exists(ffmpeg_path + "/ffmpeg"):
+            os.environ["PATH"] = ffmpeg_path + ":" + os.environ.get("PATH", "")
+            print(f"[ffmpeg] topildi: {ffmpeg_path}")
+            break
 
 import telebot
 from telebot import types
@@ -255,6 +262,7 @@ def download_and_send_song(chat_id, url, title, status_msg_id=None):
         'no_warnings': True,
         'age_limit': 99,
         'ignoreerrors': False,
+        'ffmpeg_location': '/usr/bin',
     }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -410,6 +418,7 @@ def download_all(message):
             }],
             'quiet': True,
             'no_warnings': True,
+            'ffmpeg_location': '/usr/bin',
         }
         with yt_dlp.YoutubeDL(ydl_opts_audio) as ydl:
             ydl.extract_info(url, download=True)
