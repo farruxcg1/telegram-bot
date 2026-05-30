@@ -12,7 +12,7 @@ from telebot import types
 import yt_dlp
 import requests
 
-BOT_TOKEN = "8856575714:AAEfcKrrG7Z99o8dyOV7PXrPKe4E8j3wS0U"
+BOT_TOKEN = "8856575714:AAFxJPf_eFVfO30Blq3K0T5_rGwaCZ5LDZI"
 RAPIDAPI_KEY = "6dc49d8cb3msh6f05457aa55d958p12a921jsnde8cd5768511"
 
 ADMIN_ID = 264008630
